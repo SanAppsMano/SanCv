@@ -1,5 +1,5 @@
 // ============================================
-// app.js (front-end)
+// app.js (versão completa atualizada)
 // ============================================
 
 // Endpoints das Netlify Functions (mesmo domínio -> sem CORS)
@@ -284,6 +284,46 @@ async function generateScoreWithRetries(cvText, jobTitle, jobDesc, progressBar, 
   return { score, tokens: usedTokensTotal, raw: rawContent };
 }
 
+// Chama a API Groq alternando chaves
+async function callGroqAPI(promptMessages) {
+  let lastError = null;
+  for (const apiKey of API_KEYS) {
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: promptMessages,
+          max_tokens: 512,
+          temperature: 0.2
+        })
+      });
+      if (response.status === 429) {
+        lastError = await response.json();
+        continue;
+      }
+      if (!response.ok) {
+        const erro = await response.text();
+        throw new Error(`Erro na API: ${response.status} – ${erro}`);
+      }
+      const json = await response.json();
+      const content = json.choices && json.choices[0] && json.choices[0].message.content;
+      const totalTokensUsed = json.usage ? json.usage.total_tokens : 0;
+      return { content, totalTokensUsed };
+    } catch (e) {
+      lastError = e;
+      if (!(e.message && e.message.includes('429'))) {
+        throw e;
+      }
+    }
+  }
+  throw new Error(`Todas as chaves bateram no rate limit ou ocorreram erros: ${JSON.stringify(lastError)}`);
+}
+
 // Retorna YYYY-MM-DD
 function getTodayKey() {
   const hoje = new Date();
@@ -503,7 +543,7 @@ processBtn.addEventListener('click', async () => {
   }
 });
 
-// Extrair dados para Planilha (rota “sheet”)
+// Extrair dados para Google Sheets (via Netlify Function)
 extractBtn.addEventListener('click', async () => {
   if (!fileInput.files.length) return;
   extractBtn.disabled = true;
@@ -520,28 +560,29 @@ extractBtn.addEventListener('click', async () => {
   }
 
   try {
+    // Monta as linhas para enviar à função
     const rowsToAppend = [];
+    // Primeiro, extraímos o Markdown e formamos cada linha
     for (const file of pdfFiles) {
       const cvText = await extractTextFromPDF(file);
       const { markdown, tokens: t1 } = await resumeCV(cvText);
       updateDailyUsage(t1);
-     
-      // Formata data de modificação do arquivo em ISO (ou outra forma que queira)
-      const dataMod = new Date(file.lastModified).toISOString().split('T')[0]; 
-      // Exemplo: “2025-06-02”
 
       const sections = parseMarkdownSections(markdown);
+      const dateMod = new Date(file.lastModified).toISOString().split('T')[0];
+
       const row = [
         sections['Nome Completo'] || '',
         sections['Experiência']   || '',
         sections['Habilidades']   || '',
         sections['Educação']      || '',
         sections['Idiomas']       || '',
-        '' // “Contato” vazio
+        dateMod
       ];
       rowsToAppend.push(row);
     }
 
+    // Chama a Netlify Function para inserir as linhas na planilha
     const response = await fetch(SHEET_FUNCTION, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
