@@ -66,7 +66,7 @@ export async function handler(event, context) {
       range: `${SHEET_NAME}!1:1`
     });
     const existingHeaders = getRes.data.values ? getRes.data.values[0] : [];
-    const needed = ['Nome Completo','Experiência','Habilidades','Educação','Idiomas'];
+    const needed = ['Nome Completo','Experiência','Habilidades','Educação','Idiomas','Data Modificação'];
     const headers = existingHeaders.slice();
     let updated = false;
 
