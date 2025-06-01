@@ -10,6 +10,8 @@ const CREDENTIALS = process.env.GOOGLE_SERVICE_ACCOUNT
   ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT)
   : null;
 
+console.log("RAW SERVICE_ACCOUNT:", process.env.GOOGLE_SERVICE_ACCOUNT);
+
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 // Substitua estes valores pelo seu ID de planilha e nome da aba
