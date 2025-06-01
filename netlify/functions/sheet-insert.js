@@ -1,6 +1,7 @@
 // netlify/functions/sheet-insert.js
 
 import { google } from 'googleapis';
+console.log("RAW SERVICE_ACCOUNT:", process.env.GOOGLE_SERVICE_ACCOUNT);
 
 /**
  * Agora, em vez de ler um arquivo físico, pegamos o JSON da Service Account
@@ -9,8 +10,6 @@ import { google } from 'googleapis';
 const CREDENTIALS = process.env.GOOGLE_SERVICE_ACCOUNT
   ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT)
   : null;
-
-console.log("RAW SERVICE_ACCOUNT:", process.env.GOOGLE_SERVICE_ACCOUNT);
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
