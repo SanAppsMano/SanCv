@@ -525,6 +525,10 @@ extractBtn.addEventListener('click', async () => {
       const cvText = await extractTextFromPDF(file);
       const { markdown, tokens: t1 } = await resumeCV(cvText);
       updateDailyUsage(t1);
+     
+      // Formata data de modificação do arquivo em ISO (ou outra forma que queira)
+      const dataMod = new Date(file.lastModified).toISOString().split('T')[0]; 
+      // Exemplo: “2025-06-02”
 
       const sections = parseMarkdownSections(markdown);
       const row = [
