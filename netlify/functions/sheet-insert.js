@@ -1,43 +1,33 @@
 // netlify/functions/sheet-insert.js
-
 import { google } from 'googleapis';
-
-/**
- * Agora, em vez de ler um arquivo físico, pegamos o JSON da Service Account
- * diretamente da variável de ambiente GOOGLE_SERVICE_ACCOUNT.
- */
-const CREDENTIALS = process.env.GOOGLE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT)
-  : null;
-
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
-
-// Substitua estes valores pelo seu ID de planilha e nome da aba
-const SPREADSHEET_ID = '1t3zpEeD5nVyLKgbfZf5jXOZPN2zYWt7Xmy_k817p440';
-const SHEET_NAME     = 'cadcv';
 
 export async function handler(event, context) {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      body: JSON.stringify({ error: 'Método não permitido. Use POST.' })
+      body: JSON.stringify({ error: 'Use POST.' })
     };
   }
 
-  // Verifica se a variável de ambiente existe
-  if (!CREDENTIALS) {
+  let CREDENTIALS;
+  try {
+    CREDENTIALS = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: 'Variável de ambiente GOOGLE_SERVICE_ACCOUNT não definida ou inválida.'
-      })
+      body: JSON.stringify({ error: 'Service Account JSON inválido.' })
     };
   }
+
+  const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+  // ID da planilha e nome da aba:
+  const SPREADSHEET_ID = '1t3zpEeD5nVyLKgbfZf5jXOZPN2zYWt7Xmy_k817p440';
+  const SHEET_NAME     = 'cadcv';
 
   let body;
   try {
     body = JSON.parse(event.body);
-  } catch (err) {
+  } catch {
     return {
       statusCode: 400,
       body: JSON.stringify({ error: 'JSON inválido no body.' })
@@ -52,15 +42,13 @@ export async function handler(event, context) {
   }
 
   try {
-    // Autentica usando a Service Account (via variável de ambiente)
     const auth = new google.auth.GoogleAuth({
       credentials: CREDENTIALS,
       scopes: SCOPES
     });
-
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // (A) Garante que a primeira linha contenha os cabeçalhos
+    // (A) Garante cabeçalhos (agora com “Data Modificação”)
     const getRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SHEET_NAME}!1:1`
@@ -86,7 +74,7 @@ export async function handler(event, context) {
       });
     }
 
-    // (B) Faz append das linhas recebidas no body.rows
+    // (B) Faz append das linhas (cada row já terá 6 colunas)
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: SHEET_NAME,
@@ -99,7 +87,6 @@ export async function handler(event, context) {
       statusCode: 200,
       body: JSON.stringify({ status: 'success', appended: body.rows.length })
     };
-
   } catch (err) {
     return {
       statusCode: 500,
