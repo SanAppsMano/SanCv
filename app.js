@@ -1,5 +1,5 @@
 // ============================================
-// app.js (versão completa atualizada)
+// app.js (versão completa atualizada - data no formato Brasil)
 // ============================================
 
 // Endpoints das Netlify Functions (mesmo domínio -> sem CORS)
@@ -569,7 +569,13 @@ extractBtn.addEventListener('click', async () => {
       updateDailyUsage(t1);
 
       const sections = parseMarkdownSections(markdown);
-      const dateMod = new Date(file.lastModified).toISOString().split('T')[0];
+
+      // Data Modificação no formato brasileiro DD/MM/YYYY
+      const dt = new Date(file.lastModified);
+      const day = String(dt.getDate()).padStart(2, '0');
+      const month = String(dt.getMonth() + 1).padStart(2, '0');
+      const year = dt.getFullYear();
+      const dateMod = `${day}/${month}/${year}`;
 
       const row = [
         sections['Nome Completo'] || '',
