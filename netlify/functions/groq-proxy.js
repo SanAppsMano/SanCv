@@ -1,28 +1,41 @@
 // netlify/functions/groq-proxy.js
 import fetch from 'node-fetch';
 
-// Liste aqui suas chaves Groq (serão usadas servidor‐side apenas)
-const API_KEYS = [
-  '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',
-  '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',
-  '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',
-  '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'
-];
+/**
+ * Lê as chaves Groq da variável de ambiente GROQ_API_KEYS,
+ * que foi configurada no painel do Netlify.
+ * Exemplo de valor em GROQ_API_KEYS:
+ * "chave1,chave2,chave3"
+ */
+const API_KEYS = (process.env.GROQ_API_KEYS || '')
+  .split(',')
+  .map(k => k.trim())
+  .filter(k => k.length > 0);
 
+// Handler principal (invocado em /.netlify/functions/groq-proxy)
 export async function handler(event, context) {
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Método não permitido' }) };
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Método não permitido. Use POST.' })
+    };
   }
 
   let payload;
   try {
     payload = JSON.parse(event.body);
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: 'JSON inválido' }) };
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'JSON inválido no body' })
+    };
   }
 
   if (!Array.isArray(payload.promptMessages)) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Faltou promptMessages (array)' }) };
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Faltou promptMessages (array) no JSON' })
+    };
   }
 
   const bodyTemplate = {
@@ -40,17 +53,20 @@ export async function handler(event, context) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
+          Authorization: `Bearer ${key}`
         },
         body: JSON.stringify(bodyTemplate)
       });
 
       if (resp.status === 429) {
-        lastError = new Error(`Rate limit (429) com chave ${key}`);
+        // Rate limit nessa chave, tenta a próxima
+        lastError = new Error(`Rate limit (429) com a chave ${key}`);
         continue;
       }
+
       const text = await resp.text();
       if (resp.ok) {
+        // Sucesso: devolve exatamente o JSON que a Groq retornou
         return {
           statusCode: 200,
           body: text
@@ -65,6 +81,7 @@ export async function handler(event, context) {
     }
   }
 
+  // Se todas as chaves falharam
   return {
     statusCode: 502,
     body: JSON.stringify({ error: lastError.message })
