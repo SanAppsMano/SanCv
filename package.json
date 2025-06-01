@@ -1,0 +1,13 @@
+{
+  "name": "sancv-netlify",
+  "version": "1.0.0",
+  "description": "Site SanCv com Netlify Functions para Groq e Google Sheets",
+  "main": "app.js",
+  "scripts": {
+    "build": "echo \"Nada a compilar do front-end; as funções são empacotadas automaticamente pelo Netlify\""
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7",      // note que a versão 2.x é CommonJS, compatível com Netlify Functions
+    "googleapis": "^105.0.0"     // ou a última versão disponível
+  }
+}
